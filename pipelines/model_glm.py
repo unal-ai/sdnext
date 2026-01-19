@@ -109,14 +109,22 @@ def load_glm_image(checkpoint_info, diffusers_load_config=None):
     )
 
     # Load vision-language encoder (AR model - 9B)
-    # Note: This is a conditional generation model, different from typical text encoders
-    vision_language_encoder = generic.load_text_encoder(
+    # Note: This is a conditional generation model with internal methods (get_image_features)
+    # that don't go through forward() hooks, so we load it directly without CPU offload
+    # to avoid device mismatch during inference
+    vl_load_args, vl_quant_args = model_quant.get_dit_args(diffusers_load_config, module='TE', device_map=True, allow_quant=True)
+    vl_load_args.pop('torch_dtype', None)
+    vl_load_args['dtype'] = devices.dtype
+    vl_load_args['subfolder'] = 'vision_language_encoder'
+    shared.log.debug(f'Load model: vision_language_encoder="{repo_id}" cls=GlmImageForConditionalGeneration loader=direct args={vl_load_args}')
+    vision_language_encoder = transformers.GlmImageForConditionalGeneration.from_pretrained(  # pylint: disable=no-member
         repo_id,
-        cls_name=transformers.GlmImageForConditionalGeneration, # pylint: disable=no-member
-        subfolder="vision_language_encoder",
-        load_config=diffusers_load_config,
-        allow_shared=False
+        cache_dir=shared.opts.hfcache_dir,
+        **vl_load_args,
+        **vl_quant_args,
     )
+    # Mark as not offloadable since get_image_features() bypasses forward hooks
+    vision_language_encoder.offload_never = True
 
     pipe = diffusers.GlmImagePipeline.from_pretrained(
         repo_id,
