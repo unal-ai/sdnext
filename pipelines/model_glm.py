@@ -116,7 +116,7 @@ def load_glm_image(checkpoint_info, diffusers_load_config=None):
     vl_load_args.pop('torch_dtype', None)
     vl_load_args['dtype'] = devices.dtype
     vl_load_args['subfolder'] = 'vision_language_encoder'
-    shared.log.debug(f'Load model: vision_language_encoder="{repo_id}" cls=GlmImageForConditionalGeneration loader=default args={vl_load_args}')
+    shared.log.debug(f'Load model: vision_language_encoder="{repo_id}" cls=GlmImageForConditionalGeneration loader=direct args={vl_load_args}')
     vision_language_encoder = transformers.GlmImageForConditionalGeneration.from_pretrained(  # pylint: disable=no-member
         repo_id,
         cache_dir=shared.opts.hfcache_dir,
